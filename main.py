@@ -7,6 +7,7 @@ Created on Mon Apr 24 13:55:45 2023
 
 import pandas as pd
 import numpy as np
+from sklearn.decomposition import PCA
 from sklearn import covariance, linear_model, svm
 from sklearn.model_selection import train_test_split, ShuffleSplit, GridSearchCV
 from sklearn.metrics import r2_score, mean_squared_error
@@ -16,14 +17,28 @@ import matplotlib.pyplot as plt
 
 
 # load data.
-file = '../cw1/boston.csv'
+file = '../cw1/boston/boston.csv'
 data = pd.read_csv(file)
-
-# split data.
 X = data.values[:,:-1]
 y = data.values[:,-1]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, 
+
+# pca
+pca = PCA(svd_solver='full')
+X2 = pca.fit_transform(X)
+ratio = pca.explained_variance_ratio_
+n_comp = (ratio.cumsum() < 0.9).sum()
+fig,ax = plt.subplots()
+sns.barplot(x=np.arange(0,len(ratio)), y=(ratio*100).astype(np.int32), ax=ax)
+ax.bar_label(ax.containers[0])
+ax.set(title='PCA', xlabel='Principal Components', ylabel='Percentage of explained variances')
+plt.show()
+
+# split data.
+X_train, X_test, y_train, y_test = train_test_split(X2[:, :n_comp], y, test_size=0.4, 
                                                     random_state=0)
+
+
+
 
 # cross-validation.
 cv = ShuffleSplit(n_splits=5, test_size=0.3, random_state=0)
@@ -61,9 +76,9 @@ for key in models.keys():
     # plot results
     fig,ax = plt.subplots()
     sns.barplot(x='mean_test_r2', y='params', data=results, ax=ax)
-    ax.bar_label(ax.containers[0], fmt='%.5f')
+    ax.bar_label(ax.containers[0], fmt='%.6f', label_type='center')
     mu, std = results['mean_test_r2'].mean(), np.nan_to_num(results['mean_test_r2'].std())
-    ax.set(xlim=(mu-3*std, mu+3*std))
+    #ax.set(xlim=(mu-3*std, mu+3*std))
     ax.set(title=f'{key} mean 5-fold')
     plt.show()
     
@@ -83,8 +98,8 @@ scores_data = pd.DataFrame(scores)
 for metric in ['r2', 'mse', 'rmse']:
     fig,ax = plt.subplots()
     sns.barplot(x=metric, y='params', data=scores_data, ax=ax)
-    ax.bar_label(ax.containers[0], fmt='%.5f')
+    ax.bar_label(ax.containers[0], fmt='%.6f', label_type='center')
     mu, std = scores_data[metric].mean(), scores_data[metric].std()
-    ax.set(xlim=(0, mu+3*std))
+    #ax.set(xlim=(mu-3*std, mu+3*std))
     ax.set(title='Models best params')
     plt.show()
